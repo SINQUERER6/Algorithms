@@ -1,0 +1,30 @@
+sta:set=(1,2,3,4)
+
+from collections.abc import Sequence
+from typing import Any
+class SetOper:
+    def __init__(self,iterable:Sequence[Any]):
+        
+        self.iterable=set(iterable)
+        self.len=len(self.iterable)
+    def Find(self,element:Any):
+        if element in self.iterable:
+            print('集合中存在名为"'+str(element)+'"的元素')
+        else:
+            print('集合中不存在名为"'+str(element)+'"的元素')
+    def Delete(self,element:Any):
+        if element in self.iterable:
+            self.iterable.remove(element)
+            print('集合中存在名为"'+str(element)+'"的元素，已删除，删除后的集合为：')
+            print(self.iterable)
+        else:
+            print('集合中不存在名为"'+str(element)+'"的元素，无法删除')
+    def Insert(self,element:Any):
+            self.iterable=self.iterable.union(element)
+            print('插入后的集合为：')
+            print(self.iterable)
+
+
+
+ce_shi=SetOper(sta)
+ce_shi.Insert("ab")

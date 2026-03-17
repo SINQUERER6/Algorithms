@@ -1,0 +1,27 @@
+sta:list[int]=[1,2,3,4]
+from collections.abc import Sequence
+from typing import Any
+class Nor:
+    L=0
+    def __init__(self,iterable:Sequence[Any]):
+        self.iterable=list(iterable)
+        self.len=len(self.iterable)
+    def Insert(self,element:Any)->list[Any]:
+      L=self.len
+      Location:int=L
+      self.iterable.append("")
+      for i in range(0,L-2,+1):
+          if self.iterable[i]<=element & self.iterable[i+1]>=element:
+              Location=i+1
+              break
+      for i in range(L,Location-1,-1):
+          self.iterable[i]=self.iterable[i-1]
+      self.iterable[Location]=element
+      self.len+=1
+      return self.iterable
+
+
+Ce_Shi=Nor(sta)
+print(Ce_Shi.Insert(5))
+print(Ce_Shi.Insert(6))
+print(Ce_Shi.Insert(7))
