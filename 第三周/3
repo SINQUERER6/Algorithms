@@ -1,0 +1,57 @@
+import hashlib
+a=1
+b=2
+c=3
+d=4
+e=5
+f=6
+g=7
+
+hash_dict:dict[str,int]={
+    "abc":1001,
+    "abd":1002,
+    "acd":1003,
+                         }
+
+class HashOper:
+    def __init__(self,size:int):
+        self.size:int =size
+        self.table:list[list[tuple[str,int]]]=[[] for _ in range(size)]
+    def calcu(self,key: str) -> int:
+        return hash(key) % self.size
+    def put(self,key:str,value:int)->None:
+        result:int=self.calcu(key)
+        bucket:list[tuple[str,int]]=self.table[result]
+        for i,(old_key,old_value) in enumerate(bucket):
+            if key == old_key:
+                bucket[i]=(key,value)
+                return
+        else:
+                bucket.append((key,value))
+    def get(self,key:str) -> int | None:
+        result:int=self.calcu(key)
+        bucket:list[tuple[str,int]]=self.table[result]
+        for bucket_key,bucket_value in bucket:
+            if key == bucket_key:
+                return bucket_value
+        return None
+    def Del(self,key:str)->None:
+        result:int=self.calcu(key)
+        bucket:list[tuple[str,int]]=self.table[result]
+        for index,(bucket_key,bucket_value) in enumerate(bucket):
+            if key == bucket_key:
+                del bucket[index]
+        return None
+    def __str__(self)->str:
+        items={}
+        for bucket in self.table:
+            for key,value in bucket:
+                items[key]=value
+        return str(items)
+        
+hash_dict = HashOper(size=12)
+hash_dict.put("abc",1001)
+hash_dict.put("abd",1002)
+hash_dict.put("acd",1003)
+
+print(hash_dict)

@@ -1,0 +1,21 @@
+from typing import Any
+from collections.abc import Sequence
+sh :list[int]=[1,2,3,4]
+class sddd:
+    def __init__(self,iterable:Sequence[Any]):
+        self.iterable=list[iterable]
+        self.len=len(iterable)
+    def chaxuncharu(self,element:Any) ->None:
+        
+        initial_i:int=self.len+1
+        for i,valuae in enumerate(self.iterable):
+            if element<int(valuae):
+                initial_i=i
+                break
+        self.iterable.append(" ")
+        for i in range(self.len,initial_i-1,-1):
+            self.iterable[i]=self.iterable[i-1]
+        self.iterable[initial_i]=element
+        self.iterable=list[iterable]
+chaxun_charu=sddd(sh)
+print(chaxun_charu.chaxuncharu(5))
