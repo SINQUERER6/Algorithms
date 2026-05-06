@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>基数排序可视化演示</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/theme/white.css">
+    <style>
+        :root {
+            --card-width: 44px;
+            --card-gap: 8px;
+            --color-default: #3b82f6;
+            --color-compare: #f59e0b;
+            --color-swap: #ef4444;
+            --color-sorted: #22c55e;
+            --color-pivot: #8b5cf6;
+            --color-gold: #fbbf24;
+            --color-insert: #ec4899;
+            --color-radix-distribute: #f59e0b;
+            --color-radix-bucket: #06b6d4;
+            --color-radix-collect: #8b5cf6;
+            --color-radix-digit: #ec4899;
+        }
+
+        .reveal {
+            font-family: "Helvetica Neue", Helvetica, "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+        }
+
+        .reveal h1, .reveal h2, .reveal h3 {
+            font-weight: 600;
+            color: #1f2937;
+            text-transform: none;
+        }
+
+        .reveal h1 { font-size: 2.2em; }
+        .reveal h2 { font-size: 1.5em; margin-bottom: 0.5em; }
+
+        .reveal .slides section {
+            padding: 16px 20px;
+        }
+
+        .cover-slide h1 {
+            font-size: 2.4em;
+            color: #111827;
+            margin-bottom: 0.3em;
+        }
+        .cover-slide p {
+            font-size: 1.05em;
+            color: #6b7280;
+        }
+
+        .algo-controls {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .algo-controls input[type="text"] {
+            padding: 6px 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 13px;
+            width: 200px;
+            outline: none;
+        }
+
+        .algo-controls button {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            background: #2563eb;
+            color: #fff;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        .algo-controls button:hover { background: #1d4ed8; }
+        .algo-controls button:active { transform: translateY(1px); }
+        .algo-controls button:disabled { background: #9ca3af; cursor: not-allowed; }
+
+        .algo-controls .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+        .algo-controls .btn-secondary:hover { background: #e5e7eb; }
+
+        .viz-container {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            height: 420px;
+            margin: 0 auto 12px;
+            padding: 10px 10px 26px 10px;
+            background: #f9fafb;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            max-width: 900px;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+
+        .array-row {
+            position: relative;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            height: 200px;
+            width: 100%;
+            flex-shrink: 0;
+            margin-bottom: 10px;
+        }
+
+        .buckets-row {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            width: 100%;
+            height: 160px;
+            flex-shrink: 0;
+            padding: 0 10px;
+        }
+
+        .bucket {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: calc((100% - 90px) / 10);
+            min-width: 40px;
+            max-width: 70px;
+            height: 100%;
+            background: #fff;
+            border: 1px dashed #d1d5db;
+            border-radius: 8px;
+            padding: 4px;
+            transition: border-color 0.3s, background 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        .bucket.active {
+            border-color: var(--color-compare);
+            background: #fffbeb;
+            box-shadow: 0 0 12px rgba(245, 158, 11, 0.25);
+        }
+
+        .bucket.target-bucket {
+            border-color: var(--color-radix-bucket);
+            border-style: solid;
+            border-width: 2px;
+            background: #ecfeff;
+            box-shadow: 0 0 14px rgba(6, 182, 212, 0.3);
+        }
+
+        .bucket-label {
+            font-size: 12px;
+            font-weight: 700;
+            color: #6b7280;
+            margin-bottom: 4px;
+            text-align: center;
+        }
+
+        .bucket.active .bucket-label { color: #b45309; }
+        .bucket.target-bucket .bucket-label { color: #0891b2; }
+
+        .bucket-items {
+            display: flex;
+            flex-direction: column-reverse;
+            align-items: center;
+            justify-content: flex-start;
+            width: 100%;
+            flex: 1;
+            gap: 3px;
+            overflow: hidden;
+        }
+
+        .bucket-card {
+            width: 100%;
+            border-radius: 4px;
+            background: linear-gradient(180deg, #67e8f9 0%, var(--color-radix-bucket) 100%);
+            color: #fff;
+            font-size: 11px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+            flex-shrink: 0;
+            transition: transform 0.3s ease, opacity 0.3s ease;
+        }
+
+        .bucket-card.entering {
+            animation: bucket-card-in 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes bucket-card-in {
+            0% { transform: scale(0.5) translateY(-20px); opacity: 0; }
+            100% { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Card wrapper */
+        .card-wrapper {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-end;
+            flex-shrink: 0;
+            width: var(--card-width);
+            margin-right: var(--card-gap);
+            transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease;
+            z-index: 1;
+        }
+
+        .card {
+            width: var(--card-width);
+            border-radius: 6px;
+            background: linear-gradient(180deg, #60a5fa 0%, var(--color-default) 100%);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+            transition: background 0.3s ease, box-shadow 0.3s ease, transform 0.3s ease;
+            position: relative;
+        }
+
+        .card .val { font-size: 14px; line-height: 1; }
+
+        .digit-overlay {
+            position: absolute;
+            top: -22px;
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: var(--color-radix-digit);
+            color: #fff;
+            font-size: 13px;
+            font-weight: 800;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 8px rgba(236, 72, 153, 0.4);
+            opacity: 0;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .card-index-overlay {
+            position: absolute;
+            bottom: 6px;
+            width: var(--card-width);
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            font-weight: 500;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Radix specific states */
+        .radix-viz .card-wrapper.focused .card {
+            box-shadow: 0 0 18px rgba(245, 158, 11, 0.8);
+            z-index: 100;
+        }
+
+        .radix-viz .card-wrapper.distributing .card {
+            background: linear-gradient(180deg, #fbbf24 0%, var(--color-radix-distribute) 100%);
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.9);
+            transform: translateY(-12px) scale(1.15);
+        }
+
+        .radix-viz .card-wrapper.distributing .digit-overlay {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+        }
+
+        .radix-viz .card-wrapper.in-bucket .card {
+            opacity: 0.25;
+            transform: scale(0.9);
+            filter: grayscale(0.6);
+        }
+
+        .radix-viz .card-wrapper.collecting .card {
+            background: linear-gradient(180deg, #a78bfa 0%, var(--color-radix-collect) 100%);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.8);
+            transform: translateY(-8px) scale(1.1);
+        }
+
+        .radix-viz .card-wrapper.sorted-radix .card {
+            background: linear-gradient(180deg, #86efac 0%, var(--color-sorted) 100%);
+        }
+
+        .radix-viz .card-wrapper.anim-pop .card {
+            animation: pop-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes pop-in {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            60% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Phase indicator */
+        .phase-indicator {
+            position: absolute;
+            top: 6px;
+            right: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: #e5e7eb;
+            color: #374151;
+            pointer-events: none;
+            z-index: 5;
+        }
+        .phase-indicator.distribute { background: #fef3c7; color: #92400e; }
+        .phase-indicator.collect { background: #ede9fe; color: #5b21b6; }
+
+        /* Info panel */
+        .info-panel {
+            max-width: 800px;
+            margin: 0 auto 10px;
+            padding: 10px 14px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 10px;
+            text-align: center;
+            min-height: 40px;
+        }
+        .step-desc { font-size: 15px; color: #111827; margin-bottom: 3px; }
+        .step-counter { font-size: 12px; color: #6b7280; }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+        .legend-dot { width: 11px; height: 11px; border-radius: 2px; }
+
+        /* Playback controls */
+        .playback {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 6px;
+        }
+        .playback button { padding: 8px 16px; border-radius: 8px; font-size: 13px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            :root { --card-width: 32px; --card-gap: 4px; }
+            .viz-container { height: 340px; }
+            .array-row { height: 150px; }
+            .buckets-row { height: 130px; }
+            .reveal h2 { font-size: 1.2em; }
+            .algo-controls input[type="text"] { width: 150px; }
+            .bucket-label { font-size: 10px; }
+            .bucket-card { font-size: 9px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <!-- Cover -->
+            <section class="cover-slide">
+                <h1>基数排序可视化演示</h1>
+                <p>按位分配收集（LSD）— 交互式逐步演示</p>
+                <p style="margin-top: 40px; font-size: 0.9em; color: #9ca3af;">按 → 键或点击右下角箭头开始</p>
+            </section>
+
+            <!-- Radix Sort -->
+            <section class="section radix-viz">
+                <h2>基数排序（LSD）</h2>
+                <div class="algo-controls">
+                    <input type="text" class="array-input" placeholder="输入数字，如：170,45,75,90,2,802" value="170,45,75,90,2,802,24,66">
+                    <button class="btn-generate">生成数组</button>
+                    <button class="btn-reset btn-secondary">重置</button>
+                </div>
+                <div class="legend">
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--color-default)"></span>默认</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--color-radix-distribute)"></span>分配中</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--color-radix-bucket)"></span>桶中</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--color-radix-collect)"></span>收集中</span>
+                    <span class="legend-item"><span class="legend-dot" style="background:var(--color-sorted)"></span>已排序</span>
+                </div>
+                <div class="viz-container" id="viz-radix">
+                    <div class="phase-indicator" id="phase-radix" style="display:none;"></div>
+                    <div class="array-row" id="array-row-radix"></div>
+                    <div class="buckets-row" id="buckets-row-radix"></div>
+                </div>
+                <div class="info-panel">
+                    <div class="step-desc" id="desc-radix">请点击“生成数组”开始</div>
+                    <div class="step-counter" id="counter-radix">- / -</div>
+                </div>
+                <div class="playback">
+                    <button class="btn-prev">上一步</button>
+                    <button class="btn-play">自动播放</button>
+                    <button class="btn-next">下一步</button>
+                </div>
+            </section>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/reveal.js@4.5.0/dist/reveal.js"></script>
+    <script>
+        Reveal.initialize({
+            hash: true,
+            slideNumber: 'c/t',
+            transition: 'slide',
+            width: 1100,
+            height: 720,
+            margin: 0.06
+        });
+
+        // ======================== Utilities ========================
+        function parseInput(str) {
+            return str.split(/[,，\s]+/)
+                .map(s => s.trim())
+                .filter(s => s !== '')
+                .map(Number)
+                .filter(n => !isNaN(n));
+        }
+
+        function clampArray(arr, maxLen = 20) {
+            return arr.slice(0, maxLen);
+        }
+
+        function deepCopy(arr) {
+            return arr.map(item => ({ ...item }));
+        }
+
+        function createSnapshot(array, description, focus = [], animation = '', extras = {}) {
+            return {
+                array: deepCopy(array),
+                desc: description,
+                focus,
+                animation,
+                extras
+            };
+        }
+
+        // ======================== Radix Sort Step Generator ========================
+        function generateRadixSteps(arr) {
+            const steps = [];
+            const n = arr.length;
+            // 基数排序需要非负整数
+            const array = arr.map((v, i) => ({ value: v, state: 'default', id: i }));
+            steps.push(createSnapshot(array, `初始数组: [${arr.join(', ')}]`));
+
+            if (n <= 1) {
+                array.forEach(x => x.state = 'sorted-radix');
+                steps.push(createSnapshot(array, `排序完成！`));
+                return steps;
+            }
+
+            const maxVal = Math.max(...arr);
+            const maxDigit = maxVal === 0 ? 1 : Math.floor(Math.log10(maxVal)) + 1;
+
+            steps.push(createSnapshot(array,
+                `最大值 ${maxVal}，共 ${maxDigit} 位，将进行 ${maxDigit} 轮"分配→收集"`,
+                [], '', { phase: 'init', maxDigit }));
+
+            for (let exp = 1, digit = 1; digit <= maxDigit; exp *= 10, digit++) {
+                // 分配阶段开始
+                steps.push(createSnapshot(array,
+                    `第 ${digit} 轮：按第 ${digit} 位（${exp} 位）分配`,
+                    [], '', { phase: 'distribute-start', exp, digit }));
+
+                const buckets = Array.from({ length: 10 }, () => []);
+
+                for (let i = 0; i < n; i++) {
+                    const val = array[i].value;
+                    const d = Math.floor(val / exp) % 10;
+
+                    // 高亮当前元素，显示计算出的位数字
+                    steps.push(createSnapshot(array,
+                        `arr[${i}] = ${val}，第 ${digit} 位 = ${d}，放入桶 ${d}`,
+                        [i], 'distribute', { phase: 'distribute', exp, digit, targetBucket: d, currentIdx: i, digitValue: d }));
+
+                    buckets[d].push({ ...array[i], bucketPos: buckets[d].length });
+
+                    // 标记为已分配（原数组中变暗）
+                    array[i].state = 'in-bucket';
+                    steps.push(createSnapshot(array,
+                        `已放入桶 ${d}`,
+                        [i], 'in-bucket', { phase: 'distribute', exp, digit, targetBucket: d, currentIdx: i, buckets: buckets.map(b => b.map(x => ({...x}))) }
+                    ));
+                }
+
+                // 收集阶段开始
+                steps.push(createSnapshot(array,
+                    `分配完成，开始按桶 0→9 顺序收集`,
+                    [], '', { phase: 'collect-start', exp, digit, buckets: buckets.map(b => b.map(x => ({...x}))) }
+                ));
+
+                const newArray = [];
+                let collectPos = 0;
+
+                for (let b = 0; b < 10; b++) {
+                    if (buckets[b].length === 0) continue;
+
+                    steps.push(createSnapshot(array,
+                        `从桶 ${b} 收集 ${buckets[b].length} 个元素`,
+                        [], '', { phase: 'collect-bucket', exp, digit, currentBucket: b, buckets: buckets.map(bk => bk.map(x => ({...x}))), collectPos }
+                    ));
+
+                    for (let k = 0; k < buckets[b].length; k++) {
+                        const item = buckets[b][k];
+                        // 找到原数组中该id的位置
+                        const origIdx = array.findIndex(x => x.id === item.id);
+                        
+                        if (origIdx !== -1) {
+                            steps.push(createSnapshot(array,
+                                `将桶 ${b} 中的 ${item.value} 收集到 arr[${collectPos}]`,
+                                [origIdx], 'collect', { phase: 'collect', exp, digit, currentBucket: b, targetPos: collectPos, itemId: item.id, buckets: buckets.map(bk => bk.map(x => ({...x}))) }
+                            ));
+                        }
+
+                        newArray.push({ ...item, state: 'default' });
+                        collectPos++;
+                    }
+                }
+
+                // 重写数组（保持引用）
+                array.length = 0;
+                array.push(...newArray);
+
+                steps.push(createSnapshot(array,
+                    `第 ${digit} 轮完成，数组更新为 [${array.map(x => x.value).join(', ')}]`,
+                    [], 'pop', { phase: 'round-done', exp, digit }
+                ));
+            }
+
+            array.forEach(x => x.state = 'sorted-radix');
+            steps.push(createSnapshot(array, `排序完成！`));
+            return steps;
+        }
+
+        // ======================== UI Controller ========================
+        class RadixVisualizer {
+            constructor() {
+                this.container = document.getElementById('viz-radix');
+                this.arrayRow = document.getElementById('array-row-radix');
+                this.bucketsRow = document.getElementById('buckets-row-radix');
+                this.phaseEl = document.getElementById('phase-radix');
+                this.descEl = document.getElementById('desc-radix');
+                this.counterEl = document.getElementById('counter-radix');
+                this.steps = [];
+                this.currentIndex = -1;
+                this.playing = false;
+                this.timer = null;
+                this.baseArray = [];
+
+                const section = this.container.closest('section');
+                this.inputEl = section.querySelector('.array-input');
+                this.btnGenerate = section.querySelector('.btn-generate');
+                this.btnReset = section.querySelector('.btn-reset');
+                this.btnPrev = section.querySelector('.btn-prev');
+                this.btnNext = section.querySelector('.btn-next');
+                this.btnPlay = section.querySelector('.btn-play');
+
+                this.bindEvents();
+                this.initBuckets();
+            }
+
+            bindEvents() {
+                this.btnGenerate.addEventListener('click', () => this.generate());
+                this.btnReset.addEventListener('click', () => this.reset());
+                this.btnPrev.addEventListener('click', () => this.prev());
+                this.btnNext.addEventListener('click', () => this.next());
+                this.btnPlay.addEventListener('click', () => this.togglePlay());
+            }
+
+            initBuckets() {
+                this.bucketsRow.innerHTML = '';
+                for (let i = 0; i < 10; i++) {
+                    const bucket = document.createElement('div');
+                    bucket.className = 'bucket';
+                    bucket.dataset.idx = i;
+                    const label = document.createElement('div');
+                    label.className = 'bucket-label';
+                    label.textContent = i;
+                    const items = document.createElement('div');
+                    items.className = 'bucket-items';
+                    bucket.appendChild(label);
+                    bucket.appendChild(items);
+                    this.bucketsRow.appendChild(bucket);
+                }
+            }
+
+            generate() {
+                this.pause();
+                let raw = parseInput(this.inputEl.value);
+                if (raw.length === 0) {
+                    this.descEl.textContent = '请输入有效的数字数组';
+                    return;
+                }
+                raw = clampArray(raw, 20);
+                if (raw.some(v => v < 0)) {
+                    this.descEl.textContent = '基数排序暂不支持负数，请输入非负整数';
+                    return;
+                }
+                // 限制数值大小以便可视化
+                if (raw.some(v => v > 9999)) {
+                    this.descEl.textContent = '请输入 0–9999 之间的数字以便可视化';
+                    return;
+                }
+                this.baseArray = [...raw];
+                this.steps = generateRadixSteps(raw);
+                this.currentIndex = -1;
+                this.renderEmpty();
+                this.updateInfo();
+            }
+
+            reset() {
+                this.pause();
+                if (this.baseArray.length === 0) {
+                    this.generate();
+                    return;
+                }
+                this.steps = generateRadixSteps(this.baseArray);
+                this.currentIndex = -1;
+                this.renderEmpty();
+                this.updateInfo();
+            }
+
+            createCardWrapper(id, val) {
+                const wrap = document.createElement('div');
+                wrap.className = 'card-wrapper';
+                wrap.dataset.id = id;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                const maxVal = Math.max(...this.baseArray, 1);
+                const unitH = 160 / maxVal;
+                const h = Math.max(28, Math.round(val * unitH));
+                card.style.height = `${h}px`;
+
+                const digitOverlay = document.createElement('div');
+                digitOverlay.className = 'digit-overlay';
+                digitOverlay.textContent = '0';
+
+                const valSpan = document.createElement('span');
+                valSpan.className = 'val';
+                valSpan.textContent = val;
+
+                card.appendChild(digitOverlay);
+                card.appendChild(valSpan);
+                wrap.appendChild(card);
+                return wrap;
+            }
+
+            renderEmpty() {
+                this.arrayRow.innerHTML = '';
+                this.baseArray.forEach((val, idx) => {
+                    this.arrayRow.appendChild(this.createCardWrapper(idx, val));
+                });
+                // 添加索引
+                const cardWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-width')) || 44;
+                const cardGap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-gap')) || 8;
+                const stepSize = cardWidth + cardGap;
+                const wrappers = Array.from(this.arrayRow.querySelectorAll('.card-wrapper'));
+                const baseOffset = wrappers[0] ? wrappers[0].offsetLeft : 0;
+                this.baseArray.forEach((_, idx) => {
+                    const idxDiv = document.createElement('div');
+                    idxDiv.className = 'card-index-overlay';
+                    idxDiv.textContent = idx;
+                    idxDiv.style.left = `${baseOffset + idx * stepSize}px`;
+                    this.arrayRow.appendChild(idxDiv);
+                });
+                this.clearBuckets();
+            }
+
+            clearBuckets() {
+                this.bucketsRow.querySelectorAll('.bucket').forEach(b => {
+                    b.className = 'bucket';
+                    b.querySelector('.bucket-items').innerHTML = '';
+                });
+            }
+
+            renderStep(index) {
+                if (index < 0 || index >= this.steps.length) return;
+                const step = this.steps[index];
+                const maxVal = Math.max(...this.baseArray, 1);
+                const unitH = 160 / maxVal;
+                const cardWidth = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-width')) || 44;
+                const cardGap = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--card-gap')) || 8;
+                const stepSize = cardWidth + cardGap;
+
+                // 确保 DOM 元素存在
+                let wrappers = Array.from(this.arrayRow.querySelectorAll('.card-wrapper'));
+                const wrapperById = new Map();
+                wrappers.forEach(w => wrapperById.set(Number(w.dataset.id), w));
+
+                step.array.forEach(item => {
+                    if (!wrapperById.has(item.id)) {
+                        const wrap = this.createCardWrapper(item.id, item.value);
+                        wrapperById.set(item.id, wrap);
+                        this.arrayRow.appendChild(wrap);
+                    }
+                });
+
+                // 重置所有状态
+                wrapperById.forEach(w => {
+                    w.className = 'card-wrapper';
+                    w.style.transform = '';
+                    w.style.zIndex = '';
+                    w.style.opacity = '';
+                    const card = w.querySelector('.card');
+                    const digitOverlay = card.querySelector('.digit-overlay');
+                    digitOverlay.textContent = '0';
+                    digitOverlay.style.opacity = '';
+                    digitOverlay.style.transform = '';
+                });
+
+                // 清理旧索引
+                this.arrayRow.querySelectorAll('.card-index-overlay').forEach(el => el.remove());
+
+                // 计算基准偏移
+                wrappers = Array.from(this.arrayRow.querySelectorAll('.card-wrapper'));
+                const baseOffset = wrappers[0] ? wrappers[0].offsetLeft : 0;
+
+                // 定位并样式化主数组卡片
+                step.array.forEach((item, posIndex) => {
+                    const w = wrapperById.get(item.id);
+                    if (!w) return;
+                    const dx = (posIndex - item.id) * stepSize;
+                    w.style.transform = `translateX(${dx}px)`;
+
+                    if (item.state && item.state !== 'default') {
+                        w.classList.add(item.state);
+                    }
+
+                    const card = w.querySelector('.card');
+                    const h = Math.max(28, Math.round(item.value * unitH));
+                    card.style.height = `${h}px`;
+                    card.querySelector('.val').textContent = item.value;
+
+                    // 数位高亮
+                    if (step.extras && step.extras.digitValue !== undefined && step.focus && step.focus.includes(posIndex)) {
+                        const digitOverlay = card.querySelector('.digit-overlay');
+                        digitOverlay.textContent = step.extras.digitValue;
+                    }
+
+                    if (step.focus && step.focus.includes(posIndex)) {
+                        w.classList.add('focused');
+                        w.style.zIndex = '100';
+                    }
+                });
+
+                // 阶段指示器
+                if (step.extras && step.extras.phase) {
+                    const phase = step.extras.phase;
+                    this.phaseEl.style.display = 'block';
+                    if (phase.includes('distribute')) {
+                        this.phaseEl.textContent = `分配阶段 · 第${step.extras.digit || '?'}位`;
+                        this.phaseEl.className = 'phase-indicator distribute';
+                    } else if (phase.includes('collect')) {
+                        this.phaseEl.textContent = `收集阶段 · 第${step.extras.digit || '?'}位`;
+                        this.phaseEl.className = 'phase-indicator collect';
+                    } else if (phase === 'init') {
+                        this.phaseEl.textContent = '准备';
+                        this.phaseEl.className = 'phase-indicator';
+                    } else {
+                        this.phaseEl.style.display = 'none';
+                    }
+                } else {
+                    this.phaseEl.style.display = 'none';
+                }
+
+                // 桶渲染
+                this.clearBuckets();
+                const buckets = step.extras && step.extras.buckets ? step.extras.buckets : null;
+                const targetBucket = step.extras && step.extras.targetBucket !== undefined ? step.extras.targetBucket : null;
+                const currentBucket = step.extras && step.extras.currentBucket !== undefined ? step.extras.currentBucket : null;
+
+                if (buckets) {
+                    buckets.forEach((bucketItems, bIdx) => {
+                        const bucketEl = this.bucketsRow.children[bIdx];
+                        if (!bucketEl) return;
+                        
+                        if (bIdx === targetBucket || bIdx === currentBucket) {
+                            bucketEl.classList.add('target-bucket');
+                        }
+                        if (bIdx === currentBucket) {
+                            bucketEl.classList.add('active');
+                        }
+
+                        const itemsContainer = bucketEl.querySelector('.bucket-items');
+                        bucketItems.forEach((bItem, biIdx) => {
+                            const bc = document.createElement('div');
+                            bc.className = 'bucket-card';
+                            const bh = Math.max(16, Math.round(bItem.value / maxVal * 40));
+                            bc.style.height = `${bh}px`;
+                            bc.textContent = bItem.value;
+                            if (step.animation === 'collect' && bIdx === currentBucket) {
+                                bc.style.background = 'linear-gradient(180deg, #a78bfa 0%, var(--color-radix-collect) 100%)';
+                            }
+                            // 新进入的卡片添加动画
+                            if (step.animation === 'in-bucket' && bIdx === targetBucket && biIdx === bucketItems.length - 1) {
+                                bc.classList.add('entering');
+                            }
+                            itemsContainer.appendChild(bc);
+                        });
+                    });
+                }
+
+                // 动画类应用
+                if (step.animation === 'pop') {
+                    step.array.forEach((_, posIndex) => {
+                        const item = step.array[posIndex];
+                        const w = wrapperById.get(item.id);
+                        if (w) w.classList.add('anim-pop');
+                    });
+                }
+
+                // 添加索引覆盖层
+                step.array.forEach((_, posIndex) => {
+                    const idxDiv = document.createElement('div');
+                    idxDiv.className = 'card-index-overlay';
+                    idxDiv.textContent = posIndex;
+                    idxDiv.style.left = `${baseOffset + posIndex * stepSize}px`;
+                    this.arrayRow.appendChild(idxDiv);
+                });
+
+                this.descEl.textContent = step.desc;
+                this.counterEl.textContent = `步骤 ${index + 1} / ${this.steps.length}`;
+            }
+
+            updateInfo() {
+                if (this.currentIndex === -1) {
+                    this.descEl.textContent = '请点击“下一步”开始演示';
+                    this.counterEl.textContent = `- / ${this.steps.length}`;
+                    this.phaseEl.style.display = 'none';
+                    this.clearBuckets();
+                } else {
+                    this.renderStep(this.currentIndex);
+                }
+            }
+
+            next() {
+                if (this.steps.length === 0) {
+                    this.generate();
+                    return;
+                }
+                if (this.currentIndex < this.steps.length - 1) {
+                    this.currentIndex++;
+                    this.renderStep(this.currentIndex);
+                } else {
+                    this.pause();
+                }
+            }
+
+            prev() {
+                if (this.steps.length === 0) return;
+                if (this.currentIndex >= 0) {
+                    this.currentIndex--;
+                    if (this.currentIndex === -1) {
+                        this.renderEmpty();
+                        this.updateInfo();
+                    } else {
+                        this.renderStep(this.currentIndex);
+                    }
+                }
+            }
+
+            togglePlay() {
+                if (this.playing) {
+                    this.pause();
+                } else {
+                    this.play();
+                }
+            }
+
+            play() {
+                if (this.steps.length === 0) {
+                    this.generate();
+                    return;
+                }
+                this.playing = true;
+                this.btnPlay.textContent = '暂停';
+                if (this.currentIndex >= this.steps.length - 1) {
+                    this.currentIndex = -1;
+                }
+                this.timer = setInterval(() => {
+                    if (this.currentIndex < this.steps.length - 1) {
+                        this.currentIndex++;
+                        this.renderStep(this.currentIndex);
+                    } else {
+                        this.pause();
+                    }
+                }, 1200);
+            }
+
+            pause() {
+                this.playing = false;
+                this.btnPlay.textContent = '自动播放';
+                if (this.timer) {
+                    clearInterval(this.timer);
+                    this.timer = null;
+                }
+            }
+        }
+
+        // ======================== Initialize ========================
+        let visualizer;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            visualizer = new RadixVisualizer();
+        });
+    </script>
+</body>
+</html>
