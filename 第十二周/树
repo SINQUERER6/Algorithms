@@ -1,0 +1,138 @@
+class TreeNode:
+    """链表结构的二叉树节点"""
+    def __init__(self, val=0, left=None, right=None):
+        self.val = val
+        self.left = left
+        self.right = right
+
+    def __repr__(self):
+        return f"TreeNode({self.val})"
+
+
+def array_to_tree(arr):
+    """
+    将数组按层序遍历还原为链表结构的二叉树。
+    None 表示该位置没有节点。
+    """
+    if not arr or arr[0] is None:
+        return None
+
+    root = TreeNode(arr[0])
+    queue = [root]
+    i = 1
+
+    while queue and i < len(arr):
+        node = queue.pop(0)
+
+        # 左子节点
+        if i < len(arr):
+            if arr[i] is not None:
+                node.left = TreeNode(arr[i])
+                queue.append(node.left)
+            i += 1
+
+        # 右子节点
+        if i < len(arr):
+            if arr[i] is not None:
+                node.right = TreeNode(arr[i])
+                queue.append(node.right)
+            i += 1
+
+    return root
+
+
+def get_height(node):
+    """计算树的高度"""
+    if not node:
+        return 0
+    return 1 + max(get_height(node.left), get_height(node.right))
+
+
+def print_tree(root):
+    """
+    用 ASCII 艺术画出树的形态。
+    """
+    if not root:
+        print("(Empty tree)")
+        return
+
+    height = get_height(root)
+
+    # 计算最底层宽度
+    bottom_nodes = 1 << (height - 1)
+    node_width = max(2, len(str(root.val)))
+    gap = 2
+    bottom_width = bottom_nodes * node_width + (bottom_nodes - 1) * gap
+
+    lines = []
+    queue = [(root, 0, bottom_width // 2)]
+
+    while queue:
+        level_size = len(queue)
+        current_level = []
+        next_queue = []
+
+        for _ in range(level_size):
+            node, level, pos = queue.pop(0)
+            current_level.append((node, pos))
+
+            if node and level < height - 1:
+                offset = (1 << (height - level - 2)) * (node_width + gap) // 2
+                if node.left:
+                    next_queue.append((node.left, level + 1, pos - offset))
+                if node.right:
+                    next_queue.append((node.right, level + 1, pos + offset))
+
+        line = [' '] * (bottom_width + 8)
+        branch = [' '] * (bottom_width + 8) if level < height - 1 else None
+
+        for node, pos in current_level:
+            if node:
+                s = str(node.val)
+                start = pos - len(s) // 2
+                for j, ch in enumerate(s):
+                    idx = start + j
+                    if 0 <= idx < len(line):
+                        line[idx] = ch
+
+                if branch and level < height - 1:
+                    offset = (1 << (height - level - 2)) * (node_width + gap) // 2
+                    if node.left:
+                        left_pos = pos - offset
+                        if 0 <= left_pos < len(branch):
+                            branch[left_pos] = '/'
+                        for p in range(left_pos + 1, pos):
+                            if 0 <= p < len(branch):
+                                branch[p] = '_'
+                    if node.right:
+                        right_pos = pos + offset
+                        if 0 <= right_pos < len(branch):
+                            branch[right_pos] = '\\'
+                        for p in range(pos + 1, right_pos):
+                            if 0 <= p < len(branch):
+                                branch[p] = '_'
+
+        lines.append(''.join(line))
+        if branch:
+            lines.append(''.join(branch))
+
+        queue = next_queue
+
+    for line in lines:
+        print(line.rstrip())
+
+
+# ========== 示例测试 ==========
+if __name__ == "__main__":
+    # 示例1: 包含 None 的数组
+    arr1 = [10,5,15,3,7,None,20]
+
+    print("示例1:")
+    print(f"输入数组: {arr1}")
+    print("-" * 50)
+
+    root1 = array_to_tree(arr1)
+    print("树的形态:")
+    print_tree(root1)
+
+    print("\n" + "=" * 50)
