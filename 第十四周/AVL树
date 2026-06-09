@@ -1,0 +1,189 @@
+class AVLNode:
+    def __init__(self, key):
+        self.key = key
+        self.left = None
+        self.right = None
+        self.height = 1  # 叶子节点高度为1
+
+    def __str__(self):
+        return f"{self.key}(BF={self.get_balance_factor()})"
+
+    def get_balance_factor(self):
+        """计算节点的平衡因子"""
+        left_height = self.left.height if self.left else 0
+        right_height = self.right.height if self.right else 0
+        return left_height - right_height
+
+    def update_height(self):
+        """更新节点的高度"""
+        left_height = self.left.height if self.left else 0
+        right_height = self.right.height if self.right else 0
+        self.height = 1 + max(left_height, right_height)
+
+
+class AVLTree:
+    def __init__(self):
+        self.root = None
+        self.step = 0
+        self.imbalance_info = None  # 存储失衡信息
+
+    def insert(self, key):
+        """插入一个键并返回新的根节点"""
+        self.step += 1
+        self.imbalance_info = None
+        print(f"{'='*60}")
+        print(f"步骤 {self.step}: 插入元素 {key}")
+        print(f"{'='*60}")
+        
+        self.root = self._insert(self.root, key)
+        
+        if self.imbalance_info:
+            print(f"\n⚠️ 检测到失衡: {self.imbalance_info['type']} 型")
+            print(f"旋转轴: {self.imbalance_info['axis']}")
+            print(f"旋转前的树形:")
+            self.print_tree()
+            print(f"\n旋转后的树形:")
+        
+        self.print_tree()
+        print("\n")
+
+    def _insert(self, node, key):
+        """递归插入辅助函数"""
+        # 1. 执行标准BST插入
+        if not node:
+            return AVLNode(key)
+        
+        if key < node.key:
+            node.left = self._insert(node.left, key)
+        elif key > node.key:
+            node.right = self._insert(node.right, key)
+        else:
+            # 不允许重复键
+            return node
+
+        # 2. 更新当前节点的高度
+        node.update_height()
+
+        # 3. 获取平衡因子以检查是否失衡
+        balance = node.get_balance_factor()
+
+        # 4. 如果失衡，处理四种情况
+        # LL型失衡
+        if balance > 1 and key < node.left.key:
+            self.imbalance_info = {"type": "LL", "axis": node.key}
+            return self.right_rotate(node)
+
+        # RR型失衡
+        if balance < -1 and key > node.right.key:
+            self.imbalance_info = {"type": "RR", "axis": node.key}
+            return self.left_rotate(node)
+
+        # LR型失衡
+        if balance > 1 and key > node.left.key:
+            self.imbalance_info = {"type": "LR", "axis": node.key}
+            node.left = self.left_rotate(node.left)
+            return self.right_rotate(node)
+
+        # RL型失衡
+        if balance < -1 and key < node.right.key:
+            self.imbalance_info = {"type": "RL", "axis": node.key}
+            node.right = self.right_rotate(node.right)
+            return self.left_rotate(node)
+
+        # 没有失衡，返回未改变的节点
+        return node
+
+    def left_rotate(self, z):
+        """左旋转操作"""
+        y = z.right
+        T2 = y.left
+
+        # 执行旋转
+        y.left = z
+        z.right = T2
+
+        # 更新高度
+        z.update_height()
+        y.update_height()
+
+        # 返回新的根节点
+        return y
+
+    def right_rotate(self, z):
+        """右旋转操作"""
+        y = z.left
+        T3 = y.right
+
+        # 执行旋转
+        y.right = z
+        z.left = T3
+
+        # 更新高度
+        z.update_height()
+        y.update_height()
+
+        # 返回新的根节点
+        return y
+
+    def print_tree(self):
+        """以树形结构打印AVL树"""
+        if not self.root:
+            print("空树")
+            return
+        
+        self._print_tree_recursive(self.root, "", True)
+
+    def _print_tree_recursive(self, node, prefix, is_last):
+        """递归打印辅助函数"""
+        if node:
+            print(prefix + ("└── " if is_last else "├── ") + str(node))
+            new_prefix = prefix + ("    " if is_last else "│   ")
+            
+            # 先打印右子树，再打印左子树，这样看起来更自然
+            has_right = node.right is not None
+            has_left = node.left is not None
+            
+            if has_right:
+                self._print_tree_recursive(node.right, new_prefix, not has_left)
+            if has_left:
+                self._print_tree_recursive(node.left, new_prefix, True)
+
+    def inorder_traversal(self):
+        """返回中序遍历结果"""
+        result = []
+        self._inorder_recursive(self.root, result)
+        return result
+
+    def _inorder_recursive(self, node, result):
+        """递归中序遍历辅助函数"""
+        if node:
+            self._inorder_recursive(node.left, result)
+            result.append(node.key)
+            self._inorder_recursive(node.right, result)
+
+
+def main():
+    # 给定的插入序列
+    insert_sequence = [30, 20, 10, 25, 40, 35, 50]
+    
+    avl_tree = AVLTree()
+    
+    print("AVL树插入过程演示")
+    print(f"插入序列: {insert_sequence}")
+    print("每个节点格式: 值(BF=平衡因子)")
+    print("平衡因子 = 左子树高度 - 右子树高度\n")
+    
+    # 依次插入每个元素
+    for key in insert_sequence:
+        avl_tree.insert(key)
+    
+    # 输出最终的中序遍历结果
+    print("="*60)
+    print("最终AVL树的中序遍历结果:")
+    print(avl_tree.inorder_traversal())
+    print("\n验证BST性质: 中序遍历结果应为升序排列 ✅")
+    print("="*60)
+
+
+if __name__ == "__main__":
+    main()

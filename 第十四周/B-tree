@@ -1,0 +1,234 @@
+class BTreeNode:
+    def __init__(self, leaf=False):
+        self.keys = []          # 存储键值，保持有序
+        self.children = []      # 存储子节点
+        self.leaf = leaf        # 是否为叶子节点
+    
+    def __repr__(self):
+        return f"Node(keys={self.keys}, children={len(self.children)}, leaf={self.leaf})"
+
+
+class BTree:
+    def __init__(self, m):
+        self.m = m              # B树的阶数
+        self.root = BTreeNode(leaf=True)
+        self.min_keys = (m - 1) // 2  # 非根节点的最小键数
+    
+    def insert(self, key):
+        """插入键值（自底向上分裂）"""
+        result = self._insert_recursive(self.root, key)
+        
+        # 如果根节点分裂了，创建新根
+        if result is not None:
+            mid_key, left, right = result
+            new_root = BTreeNode(leaf=False)
+            new_root.keys = [mid_key]
+            new_root.children = [left, right]
+            self.root = new_root
+    
+    def _insert_recursive(self, node, key):
+        """递归插入，返回None表示未分裂，返回(mid_key, left, right)表示分裂"""
+        if node.leaf:
+            # 叶子节点：直接插入并排序
+            node.keys.append(key)
+            node.keys.sort()
+            
+            # 检查是否溢出（键数 > m-1）
+            if len(node.keys) <= self.m - 1:
+                return None
+            else:
+                return self._split(node)
+        else:
+            # 内部节点：找到合适的子节点
+            i = 0
+            while i < len(node.keys) and key > node.keys[i]:
+                i += 1
+            
+            result = self._insert_recursive(node.children[i], key)
+            if result is None:
+                return None
+            else:
+                # 子节点分裂了，将中间键插入到当前节点
+                mid_key, left, right = result
+                node.keys.insert(i, mid_key)
+                node.children[i] = left
+                node.children.insert(i + 1, right)
+                
+                # 检查当前节点是否溢出
+                if len(node.keys) <= self.m - 1:
+                    return None
+                else:
+                    return self._split(node)
+    
+    def _split(self, node):
+        """分裂节点，返回 (中间键, 左节点, 右节点)"""
+        n = len(node.keys)
+        mid = (n - 1) // 2  # 中间键的索引
+        mid_key = node.keys[mid]
+        
+        # 创建左节点
+        left = BTreeNode(leaf=node.leaf)
+        left.keys = node.keys[:mid]
+        if not node.leaf:
+            left.children = node.children[:mid + 1]
+        
+        # 创建右节点
+        right = BTreeNode(leaf=node.leaf)
+        right.keys = node.keys[mid + 1:]
+        if not node.leaf:
+            right.children = node.children[mid + 1:]
+        
+        return (mid_key, left, right)
+    
+    def print_tree(self, node=None, prefix="", is_last=True, is_root=True):
+        """打印树形结构"""
+        if node is None:
+            node = self.root
+        
+        if is_root:
+            print(f"根节点: {node.keys} (键数: {len(node.keys)}, 孩子数: {len(node.children)}, 叶子: {node.leaf})")
+        else:
+            connector = "└── " if is_last else "├── "
+            print(f"{prefix}{connector}节点: {node.keys} (键数: {len(node.keys)}, 孩子数: {len(node.children)}, 叶子: {node.leaf})")
+        
+        if not node.leaf:
+            for i, child in enumerate(node.children):
+                is_last_child = (i == len(node.children) - 1)
+                extension = "    " if is_last else "│   "
+                self.print_tree(child, prefix + extension, is_last_child, is_root=False)
+    
+    def validate(self):
+        """验证B树的所有性质"""
+        errors = []
+        
+        def check_node(node, depth=0):
+            # 性质1：节点内键值有序
+            for i in range(len(node.keys) - 1):
+                if node.keys[i] >= node.keys[i + 1]:
+                    errors.append(f"节点 {node.keys} 中键值无序: {node.keys[i]} >= {node.keys[i+1]}")
+            
+            # 性质2：键值数量限制
+            if node == self.root:
+                if len(node.keys) < 1 or len(node.keys) > self.m - 1:
+                    errors.append(f"根节点键数 {len(node.keys)} 超出范围 [1, {self.m-1}]")
+            else:
+                if len(node.keys) < self.min_keys or len(node.keys) > self.m - 1:
+                    errors.append(f"非根节点键数 {len(node.keys)} 超出范围 [{self.min_keys}, {self.m-1}]")
+            
+            # 性质3：非叶子节点的子节点数 = 键数 + 1
+            if not node.leaf:
+                if len(node.children) != len(node.keys) + 1:
+                    errors.append(f"节点 {node.keys} 子节点数 {len(node.children)} != 键数 {len(node.keys)} + 1")
+                
+                # 性质4：键值范围检查（搜索树性质）
+                for i, key in enumerate(node.keys):
+                    left_max = self._get_max(node.children[i])
+                    if left_max >= key:
+                        errors.append(f"节点 {node.keys} 的左子树最大值 {left_max} >= 键值 {key}")
+                    
+                    right_min = self._get_min(node.children[i + 1])
+                    if right_min <= key:
+                        errors.append(f"节点 {node.keys} 的右子树最小值 {right_min} <= 键值 {key}")
+                
+                # 递归检查子节点
+                for child in node.children:
+                    check_node(child, depth + 1)
+        
+        # 性质5：所有叶子节点在同一深度
+        leaf_depths = []
+        def get_leaf_depths(node, depth=0):
+            if node.leaf:
+                leaf_depths.append(depth)
+            else:
+                for child in node.children:
+                    get_leaf_depths(child, depth + 1)
+        
+        get_leaf_depths(self.root)
+        if len(set(leaf_depths)) > 1:
+            errors.append(f"叶子节点深度不一致: {leaf_depths}")
+        
+        check_node(self.root)
+        
+        return errors
+    
+    def _get_max(self, node):
+        """获取子树的最大值"""
+        while not node.leaf:
+            node = node.children[-1]
+        return node.keys[-1]
+    
+    def _get_min(self, node):
+        """获取子树的最小值"""
+        while not node.leaf:
+            node = node.children[0]
+        return node.keys[0]
+    
+    def get_all_nodes(self, node=None):
+        """获取所有节点信息"""
+        if node is None:
+            node = self.root
+        
+        nodes = [(node.keys, len(node.children), node.leaf)]
+        
+        if not node.leaf:
+            for child in node.children:
+                nodes.extend(self.get_all_nodes(child))
+        
+        return nodes
+
+
+# ==================== 主程序 ====================
+if __name__ == "__main__":
+    keys = [10, 20, 5, 6, 12, 30, 25]
+    btree = BTree(m=3)
+
+    print("=" * 60)
+    print("3阶B树构建过程 (m=3)")
+    print("=" * 60)
+    print(f"插入序列: {keys}")
+    print(f"每个节点最多键数: {btree.m - 1} = 2")
+    print(f"非根节点最少键数: {btree.min_keys} = 1")
+    print()
+
+    for i, key in enumerate(keys):
+        print(f"步骤 {i+1}: 插入 {key}")
+        btree.insert(key)
+        print(f"  当前树结构:")
+        btree.print_tree()
+        print()
+
+    print("=" * 60)
+    print("最终B树结构")
+    print("=" * 60)
+    btree.print_tree()
+    print()
+
+    # 验证B树性质
+    print("=" * 60)
+    print("B树性质验证")
+    print("=" * 60)
+    errors = btree.validate()
+
+    if errors:
+        print("❌ 验证失败，发现以下错误:")
+        for error in errors:
+            print(f"  - {error}")
+    else:
+        print("✅ 所有B树性质验证通过!")
+        print()
+        print("验证的性质包括:")
+        print("  1. 节点内键值有序")
+        print("  2. 根节点键数在 [1, m-1] 范围内")
+        print("  3. 非根节点键数在 [⌈m/2⌉-1, m-1] 范围内")
+        print("  4. 非叶子节点的子节点数 = 键数 + 1")
+        print("  5. 所有叶子节点在同一深度")
+        print("  6. 子树键值范围满足B树搜索性质")
+
+    print()
+    print("=" * 60)
+    print("所有节点详细信息")
+    print("=" * 60)
+    nodes = btree.get_all_nodes()
+    for i, (keys, child_count, is_leaf) in enumerate(nodes):
+        node_type = "根/内部" if not is_leaf else "叶子"
+        print(f"节点 {i+1}: 键值={keys}, 孩子数={child_count}, 类型={node_type}")
