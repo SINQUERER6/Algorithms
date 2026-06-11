@@ -1,0 +1,127 @@
+class UndirectedGraph:
+    def __init__(self, vertices):
+        """
+        初始化无向图
+        :param vertices: 顶点列表
+        """
+        self.vertices = vertices
+        self.vertex_index = {v: i for i, v in enumerate(vertices)}
+        self.n = len(vertices)
+        # 邻接矩阵：n x n 的二维列表，初始化为0
+        self.adj_matrix = [[0] * self.n for _ in range(self.n)]
+        # 邻接表：字典，键为顶点，值为邻接顶点列表
+        self.adj_list = {v: [] for v in vertices}
+        self.edges = []
+    
+    def add_edge(self, u, v):
+        """
+        添加无向边
+        """
+        if u not in self.vertex_index or v not in self.vertex_index:
+            raise ValueError("顶点不存在")
+        
+        i, j = self.vertex_index[u], self.vertex_index[v]
+        
+        # 更新邻接矩阵（对称矩阵）
+        self.adj_matrix[i][j] = 1
+        self.adj_matrix[j][i] = 1
+        
+        # 更新邻接表
+        if v not in self.adj_list[u]:
+            self.adj_list[u].append(v)
+            self.adj_list[v].append(u)
+        if u not in self.adj_list[v]:
+            self.adj_list[v].append(u)
+            self.adj_list[u].append(v)
+        
+        self.edges.append((u, v))
+    
+    def display_adj_matrix(self):
+        """格式化输出邻接矩阵"""
+        print("=" * 50)
+        print("【邻接矩阵表示】")
+        print("-" * 50)
+        
+        # 打印表头
+        header = "    " + "  ".join(self.vertices)
+        print(header)
+        print("    " + "--" * self.n)
+        
+        for i, vertex in enumerate(self.vertices):
+            row = " ".join(f"{self.adj_matrix[i][j]:2}" for j in range(self.n))
+            print(f"{vertex} | {row}")
+        print("=" * 50)
+    
+    def display_adj_list(self, reverse=False):
+        """格式化输出邻接表"""
+        order = self.vertices[::-1] if reverse else self.vertices
+        print("=" * 50)
+        print("【邻接表表示】")
+        print("-" * 50)
+        
+        for vertex in self.vertices:
+            neighbors = self.adj_list[vertex]
+            if neighbors:
+                # 按字母顺序排序，输出更美观
+                neighbors_sorted = sorted(neighbors)
+                arrow = " → ".join(neighbors_sorted)
+                print(f"{vertex} → {arrow}")
+            else:
+                print(f"{vertex}: (无邻接顶点)")
+        
+        for vertex in order:
+            neighbors = self.adj_list[vertex]
+            if neighbors:
+                neighbors_sorted = sorted(neighbors)
+                arrow = " → ".join(neighbors_sorted)
+                print(f"{vertex} → {arrow}")
+            else:
+                print(f"{vertex}: (无邻接顶点)")
+        print("=" * 50)
+    
+    def get_edge_count(self):
+        """返回边的数量"""
+        return len(self.edges)
+
+
+# ==================== 主程序 ====================
+
+if __name__ == "__main__":
+    # 定义6个顶点
+    vertices = ['A', 'B', 'C', 'D', 'E', 'F']
+    
+    # 创建图
+    graph = UndirectedGraph(vertices)
+    
+    # 根据图片添加边
+    # 观察到的边: A-F, A-B, A-C, B-C, B-E, C-D, D-E, E-F
+    edges = [
+        ('A', 'F'),  # A-F
+        ('A', 'B'),  # A-B
+        ('A', 'C'),  # A-C
+        ('B', 'C'),  # B-C
+        ('B', 'E'),  # B-E
+        ('C', 'D'),  # C-D
+        ('D', 'E'),  # D-E
+        ('E', 'F'),  # E-F
+    ]
+    
+    print("正在构建无向图...")
+    print(f"顶点集 V = {set(vertices)}")
+    print(f"边集 E = {set(edges)}")
+    print()
+    
+    for u, v in edges:
+        graph.add_edge(u, v)
+    
+    # 输出结果
+    graph.display_adj_matrix()
+    print()
+    graph.display_adj_list(reverse=True)
+    print(f"\n图中共有 {graph.get_edge_count()} 条边，{len(vertices)} 个顶点。")
+    
+    # 额外：验证每个顶点的度数
+    print("\n【各顶点度数】")
+    for v in vertices:
+        degree = len(graph.adj_list[v])
+        print(f"  deg({v}) = {degree}")
