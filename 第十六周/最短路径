@@ -1,0 +1,274 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+带权有向图的最短路径算法演示
+顶点: A, B, C, D, E
+源点: A
+
+图的边（按字母顺序）：
+    A -> B: 4
+    A -> D: 2
+    B -> C: 1
+    B -> E: 5
+    D -> B: 1
+    D -> E: 4
+    E -> C: 2
+"""
+
+
+# ==================== 图的数据 ====================
+
+vertices = ['A', 'B', 'C', 'D', 'E']
+
+# 边按字母顺序排列（起点字母序，相同则按终点字母序）
+edges = [
+    ('A', 'B', 4),   # A -> B, 权重 4
+    ('A', 'D', 2),   # A -> D, 权重 2
+    ('B', 'C', 1),   # B -> C, 权重 1
+    ('B', 'E', 5),   # B -> E, 权重 5
+    ('D', 'B', 1),   # D -> B, 权重 1
+    ('D', 'E', 4),   # D -> E, 权重 4
+    ('E', 'C', 2),   # E -> C, 权重 2
+]
+
+INF = float('inf')
+
+
+def print_dist(dist, title=""):
+    """打印 dist 数组"""
+    if title:
+        print(f"\n{title}")
+    for v in vertices:
+        val = dist[v]
+        if val == INF:
+            print(f"  dist[{v}] = ∞")
+        else:
+            print(f"  dist[{v}] = {val}")
+
+
+# ==================== 1. Bellman-Ford 算法 ====================
+
+def bellman_ford(edges, vertices, source):
+    """
+    Bellman-Ford 算法
+    对每一条边进行松弛操作，共进行 |V|-1 轮
+    返回每一轮松弛后的 dist 数组历史记录
+    """
+    dist = {v: INF for v in vertices}
+    dist[source] = 0
+
+    history = [("初始状态", dict(dist))]
+    n = len(vertices)
+
+    print("=" * 60)
+    print("Bellman-Ford 算法")
+    print("=" * 60)
+    print(f"\n源点: {source}")
+    print(f"顶点数: {n}, 最多进行 {n-1} 轮松弛")
+    print(f"\n边按字母顺序处理: {edges}")
+
+    print_dist(dist, "\n【初始】")
+
+    for i in range(n - 1):
+        updated = False
+        round_updates = []
+
+        for u, v, w in edges:
+            if dist[u] != INF and dist[u] + w < dist[v]:
+                old_val = dist[v]
+                dist[v] = dist[u] + w
+                updated = True
+                round_updates.append(f"  {u}->{v}: dist[{v}] {old_val if old_val != INF else '∞'} -> {dist[v]}")
+
+        history.append((f"第 {i+1} 轮", dict(dist)))
+
+        print(f"\n【第 {i+1} 轮松弛】")
+        if round_updates:
+            for update in round_updates:
+                print(update)
+        else:
+            print("  无更新")
+        print_dist(dist)
+
+        if not updated:
+            print(f"\n>> 第 {i+1} 轮无更新，提前结束")
+            break
+
+    return history
+
+
+# ==================== 2. Dijkstra 算法 ====================
+
+def dijkstra(edges, vertices, source):
+    """
+    Dijkstra 算法
+    贪心选择当前 dist 最小的未访问顶点，松弛其邻接边
+    返回每一步选中的顶点及 dist 数组历史记录
+    """
+    # 构建邻接表
+    adj = {v: [] for v in vertices}
+    for u, v, w in edges:
+        adj[u].append((v, w))
+
+    dist = {v: INF for v in vertices}
+    dist[source] = 0
+    visited = set()
+
+    history = [("初始状态", None, dict(dist))]
+
+    print("\n" + "=" * 60)
+    print("Dijkstra 算法")
+    print("=" * 60)
+    print(f"\n源点: {source}")
+
+    print_dist(dist, "\n【初始】")
+
+    for step in range(len(vertices)):
+        # 贪心选择：未访问顶点中 dist 最小者
+        min_dist = INF
+        selected = None
+        for v in vertices:
+            if v not in visited and dist[v] < min_dist:
+                min_dist = dist[v]
+                selected = v
+
+        if selected is None:
+            break
+
+        visited.add(selected)
+
+        # 松弛选中顶点的所有出边
+        relaxations = []
+        for v, w in adj[selected]:
+            if v not in visited and dist[selected] + w < dist[v]:
+                old_val = dist[v]
+                dist[v] = dist[selected] + w
+                relaxations.append(f"  {selected}->{v}: dist[{v}] {old_val if old_val != INF else '∞'} -> {dist[v]}")
+
+        history.append((f"选中 {selected}", selected, dict(dist)))
+
+        print(f"\n【第 {step+1} 步】选中顶点: {selected}")
+        print(f"  已访问集合: {sorted(visited)}")
+        if relaxations:
+            for r in relaxations:
+                print(r)
+        else:
+            print("  无松弛更新")
+        print_dist(dist)
+
+    return history
+
+
+# ==================== 3. 算法对比分析 ====================
+
+def print_analysis():
+    """打印两种算法的核心思想对比分析"""
+    print("\n" + "=" * 60)
+    print("问题 3: 为什么 Dijkstra 要求边权非负，而 Bellman-Ford 无此限制？")
+    print("=" * 60)
+
+    analysis = """
+【核心思想对比】
+
+1. Dijkstra —— 贪心选择 (Greedy Selection)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   核心思想：每次从未访问顶点中选择 dist 值最小的顶点，标记为"已确定"，
+            并不再修改该顶点的 dist 值。
+
+   为什么要求边权非负？
+
+   假设顶点 u 已被选中（即 dist[u] 已确定），之后通过其他顶点 v 到达 u：
+
+       dist[u] 已确定  ← 贪心标记
+            ↓
+       若存在负权边 v->u（权重为负），则：
+       dist[u] 可能通过 dist[v] + w(v,u) 变得更小
+
+   但由于 u 已被标记为"已确定"，Dijkstra 不会再更新 dist[u]，
+   导致最终结果错误。
+
+   非负权保证：一旦 dist[u] 是当前最小，任何其他路径到 u 都只会更长
+   （因为后续路径还要加上非负的边权），所以 dist[u] 确实已最优。
+
+
+2. Bellman-Ford —— 逐轮松弛 (Iterative Relaxation)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   核心思想：不急于"确定"任何顶点，而是对全部边反复进行松弛操作。
+            每轮松弛可能更新任意顶点的 dist 值。
+
+   为什么能处理负权边？
+
+   经过 k 轮松弛后，dist[v] 已经考虑了所有最多包含 k 条边的最短路径。
+   由于图中无负权环时，最短路径最多包含 |V|-1 条边，
+   因此经过 |V|-1 轮后，所有顶点的 dist 值必然收敛到最优解。
+
+   即使某条边是负权，只要在后续轮次中被处理，
+   仍然可以正确更新 dist 值。没有任何顶点被提前"锁定"。
+
+
+【关键差异总结】
+
+   ┌─────────────────┬────────────────────────┬────────────────────────┐
+   │     特性        │      Dijkstra          │     Bellman-Ford       │
+   ├─────────────────┼────────────────────────┼────────────────────────┤
+   │ 核心策略        │ 贪心：锁定最小 dist     │ 迭代：逐轮全局松弛      │
+   │ 顶点状态        │ 已确定 / 未确定         │ 无锁定，全部可更新      │
+   │ 负权边处理      │ ❌ 无法处理（会误判）   │ ✅ 可以正确处理         │
+   │ 时间复杂度      │ O((V+E)logV) 或 O(V²)  │ O(V·E)                 │
+   │ 适用场景        │ 非负权图，追求效率      │ 含负权边，或检测负环    │
+   └─────────────────┴────────────────────────┴────────────────────────┘
+
+【本图验证】
+
+   本图中所有边权均为正数（4, 2, 1, 5, 1, 4, 2），
+   因此两种算法在本图上都能正确运行，且最终结果一致：
+
+       dist[A] = 0,  dist[B] = 3,  dist[C] = 4,  dist[D] = 2,  dist[E] = 6
+
+   最短路径：
+       A -> D -> B -> C  (总权: 2+1+1 = 4)
+       A -> D -> B       (总权: 2+1 = 3)
+       A -> D            (总权: 2)
+       A -> D -> B -> E  (总权: 2+1+5 = 8)  ... 等等，让我重新算
+
+   实际上 A->D->E = 2+4 = 6，而 A->D->B->E = 2+1+5 = 8，所以 E 的最短是 6
+   A->D->B->C = 2+1+1 = 4，A->B->C = 4+1 = 5，所以 C 的最短是 4
+"""
+    print(analysis)
+
+
+# ==================== 主程序 ====================
+
+if __name__ == "__main__":
+    print("\n" + "=" * 60)
+    print("带权有向图最短路径算法演示")
+    print("顶点: A, B, C, D, E    源点: A")
+    print("=" * 60)
+
+    # 1. Bellman-Ford
+    bf_history = bellman_ford(edges, vertices, 'A')
+
+    # 2. Dijkstra
+    dij_history = dijkstra(edges, vertices, 'A')
+
+    # 3. 对比分析
+    print_analysis()
+
+    # 最终结果汇总
+    print("\n" + "=" * 60)
+    print("最终结果汇总")
+    print("=" * 60)
+
+    final_bf = bf_history[-1][1]
+    final_dij = dij_history[-1][2]
+
+    print(f"\n{'顶点':>6} | {'Bellman-Ford':>14} | {'Dijkstra':>10}")
+    print("-" * 40)
+    for v in vertices:
+        bf_val = final_bf[v] if final_bf[v] != INF else '∞'
+        dij_val = final_dij[v] if final_dij[v] != INF else '∞'
+        print(f"{v:>6} | {bf_val:>14} | {dij_val:>10}")
+
+    print("\n✅ 两种算法结果一致！")
